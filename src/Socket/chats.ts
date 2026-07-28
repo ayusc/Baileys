@@ -373,7 +373,18 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	}
 
 	/** update the profile status for yourself */
-	const updateProfileStatus = async (status: string) => {
+	const updateProfileStatus = async (status: string, emoji?: string, duration?: number) => {
+		const cleanStatus = status.slice(0, 50)
+		const statusAttrs: Record<string, string> = {}
+
+		if (emoji) {
+			statusAttrs.emoji = emoji
+		}
+
+		if (typeof duration === 'number') {
+			statusAttrs.duration = duration.toString()
+		}
+
 		await query({
 			tag: 'iq',
 			attrs: {
@@ -384,8 +395,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			content: [
 				{
 					tag: 'status',
-					attrs: {},
-					content: Buffer.from(status, 'utf-8')
+					attrs: statusAttrs,
+					content: Buffer.from(cleanStatus, 'utf-8')
 				}
 			]
 		})
