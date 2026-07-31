@@ -339,7 +339,14 @@ export const decryptMessageNode = (
 						let msg: proto.IMessage = proto.Message.decode(
 							e2eType !== 'plaintext' ? unpadRandomMax16(msgBuffer) : msgBuffer
 						)
-						msg = msg.deviceSentMessage?.message || msg
+						if (msg.deviceSentMessage?.message) {
+							const innerMessage = msg.deviceSentMessage.message
+							const outerMessage = { ...msg }
+							delete outerMessage.deviceSentMessage
+							// Linked-device messages can keep the messageSecret on the outer wrapper.
+							msg = { ...outerMessage, ...innerMessage }
+						}
+
 						if (msg.senderKeyDistributionMessage) {
 							//eslint-disable-next-line max-depth
 							try {
