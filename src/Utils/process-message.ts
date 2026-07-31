@@ -627,17 +627,21 @@ const processMessage = async (
 			logger?.warn({ creationMsgKey }, 'event creation message not found, cannot decrypt response')
 		}
 	} else if (isEncryptedMessageEdit(content)) {
-		const update = await processEncryptedMessageEdit({
-			message,
-			secretEncryptedMessage: content.secretEncryptedMessage,
-			getMessage,
-			lidMapping: signalRepository.lidMapping,
-			logger,
-			meId,
-			meLid: creds.me?.lid
-		})
-		if (update) {
-			ev.emit('messages.update', [update])
+		try {
+			const update = await processEncryptedMessageEdit({
+				message,
+				secretEncryptedMessage: content.secretEncryptedMessage,
+				getMessage,
+				lidMapping: signalRepository.lidMapping,
+				logger,
+				meId,
+				meLid: creds.me?.lid
+			})
+			if (update) {
+				ev.emit('messages.update', [update])
+			}
+		} catch (err) {
+			logger.warn({ err, msgId: message.key.id }, 'failed to process encrypted message edit')
 		}
 	} else if (message.messageStubType) {
 		const jid = message.key?.remoteJid!

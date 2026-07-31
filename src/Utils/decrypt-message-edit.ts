@@ -199,7 +199,13 @@ export const processEncryptedMessageEdit = async ({
 	const receivedEditorCandidates = uniqueNormalizedJids(envelopeAuthorJids)
 	const receivedOriginalSenderCandidates = uniqueNormalizedJids(originalSenderJids)
 	if (!receivedEditorCandidates.length || !receivedOriginalSenderCandidates.length) {
-		logger.warn('cannot decrypt message edit without sender addressing')
+		logger.warn(
+			{
+				editorCandidateCount: receivedEditorCandidates.length,
+				originalSenderCandidateCount: receivedOriginalSenderCandidates.length
+			},
+			'cannot decrypt message edit without sender addressing'
+		)
 		return
 	}
 
@@ -237,7 +243,14 @@ export const processEncryptedMessageEdit = async ({
 		!protocolMessage.editedMessage ||
 		(protocolMessage.key?.id && protocolMessage.key.id !== targetKey.id)
 	) {
-		logger.warn('decrypted message edit contained an invalid protocol message')
+		logger.warn(
+			{
+				protocolType: protocolMessage?.type,
+				hasEditedMessage: !!protocolMessage?.editedMessage,
+				hasMatchingTarget: !protocolMessage?.key?.id || protocolMessage.key.id === targetKey.id
+			},
+			'decrypted message edit contained an invalid protocol message'
+		)
 		return
 	}
 

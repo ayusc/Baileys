@@ -132,6 +132,30 @@ describe('decryptMessageNode', () => {
 		expect(result.fullMessage.message?.deviceSentMessage).toBeUndefined()
 	})
 
+	it('merges an outer message secret with inner message context fields', async () => {
+		const messageSecret = Buffer.alloc(32, 7)
+		const result = decryptMessageNode(
+			plaintextMessage({
+				deviceSentMessage: {
+					message: {
+						conversation: 'linked-device message',
+						messageContextInfo: { messageAddOnDurationInSecs: 900 }
+					}
+				},
+				messageContextInfo: { messageSecret }
+			}),
+			ME_ID,
+			ME_LID,
+			repository,
+			logger
+		)
+
+		await result.decrypt()
+
+		expect(result.fullMessage.message?.messageContextInfo?.messageSecret).toEqual(messageSecret)
+		expect(result.fullMessage.message?.messageContextInfo?.messageAddOnDurationInSecs).toBe(900)
+	})
+
 	it('prefers inner fields when both device-sent layers provide message context', async () => {
 		const outerSecret = Buffer.alloc(32, 7)
 		const innerSecret = Buffer.alloc(32, 9)

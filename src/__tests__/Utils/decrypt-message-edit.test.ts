@@ -577,7 +577,7 @@ describe('processMessage encrypted edit integration', () => {
 			getMessage
 		})
 
-		return ev.emittedEvents
+		return { events: ev.emittedEvents, logger }
 	}
 
 	it.each([
@@ -640,7 +640,7 @@ describe('processMessage encrypted edit integration', () => {
 			}
 		}
 
-		const events = await processFixture({
+		const { events } = await processFixture({
 			message,
 			getMessage: async () => originalMessage()
 		})
@@ -660,5 +660,41 @@ describe('processMessage encrypted edit integration', () => {
 			}
 		])
 		expect(events.some(event => event.event === 'chats.update')).toBe(false)
+	})
+
+	it('contains unexpected edit-processing errors in the receive path', async () => {
+		const targetKey = { id: ORIGINAL_ID, remoteJid: LOCAL_PN, fromMe: true }
+		const encrypted = sealProtocolMessage({
+			originalSenderJid: DIRECT_AUTHOR_PN,
+			editorJid: DIRECT_AUTHOR_PN,
+			editedText: 'after',
+			targetKey
+		})
+		const unexpectedError = new Error('synthetic original message failure')
+		const unreadableOriginal = {} as proto.IMessage
+		Object.defineProperty(unreadableOriginal, 'messageContextInfo', {
+			get: () => {
+				throw unexpectedError
+			}
+		})
+
+		const { events, logger } = await processFixture({
+			message: createEnvelope(
+				{
+					remoteJid: DIRECT_AUTHOR_PN,
+					remoteJidAlt: DIRECT_AUTHOR_LID,
+					fromMe: false,
+					id: ENVELOPE_ID
+				},
+				encrypted
+			),
+			getMessage: async () => unreadableOriginal
+		})
+
+		expect(events.some(event => event.event === 'messages.update')).toBe(false)
+		expect(logger.warn).toHaveBeenCalledWith(
+			{ err: unexpectedError, msgId: ENVELOPE_ID },
+			'failed to process encrypted message edit'
+		)
 	})
 })

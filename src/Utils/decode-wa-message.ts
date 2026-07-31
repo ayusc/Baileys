@@ -344,7 +344,18 @@ export const decryptMessageNode = (
 							const outerMessage = { ...msg }
 							delete outerMessage.deviceSentMessage
 							// Linked-device messages can keep the messageSecret on the outer wrapper.
-							msg = { ...outerMessage, ...innerMessage }
+							msg = {
+								...outerMessage,
+								...innerMessage,
+								...(outerMessage.messageContextInfo || innerMessage.messageContextInfo
+									? {
+											messageContextInfo: {
+												...outerMessage.messageContextInfo,
+												...innerMessage.messageContextInfo
+											}
+										}
+									: {})
+							}
 						}
 
 						if (msg.senderKeyDistributionMessage) {
