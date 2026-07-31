@@ -137,6 +137,19 @@ describe('retained live-smoke authentication session', () => {
 		})
 	})
 
+	it('does not remove a lock entry when reading it fails', async () => {
+		await withTemporaryRoot(async tempRoot => {
+			const workspacePath = '/synthetic/unreadable-lock-worktree'
+			const sessionRoot = getRetainedAuthSessionRoot(workspacePath, tempRoot)
+			const lockPath = join(sessionRoot, 'active-run.lock')
+			await mkdir(sessionRoot, { mode: 0o700 })
+			await mkdir(lockPath)
+
+			await assert.rejects(openRetainedAuthSession({ workspacePath, tempRoot }), { code: 'EISDIR' })
+			assert.equal((await stat(lockPath)).isDirectory(), true)
+		})
+	})
+
 	it('refuses a retained-session root that is a symlink', async () => {
 		await withTemporaryRoot(async tempRoot => {
 			const workspacePath = '/synthetic/symlinked-worktree'

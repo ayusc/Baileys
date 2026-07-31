@@ -36,6 +36,14 @@ describe('message edit live-smoke helpers', () => {
 			}),
 			'wrapped'
 		)
+		assert.equal(
+			extractText({
+				associatedChildMessage: {
+					message: { conversation: 'shared helper wrapper' }
+				}
+			}),
+			'shared helper wrapper'
+		)
 	})
 
 	it('selects the expected incoming direct message', () => {

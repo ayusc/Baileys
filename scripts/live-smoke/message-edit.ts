@@ -1,5 +1,6 @@
 import { Boom } from '@hapi/boom'
 import { randomBytes } from 'node:crypto'
+import { setTimeout as delay } from 'node:timers/promises'
 import P from 'pino'
 import qrcode from 'qrcode-terminal'
 import makeWASocket, {
@@ -21,6 +22,7 @@ import { openRetainedAuthSession, type RetainedAuthSession } from './auth-sessio
 const PAIRING_TIMEOUT_MS = 5 * 60 * 1000
 const OPERATOR_TIMEOUT_MS = 5 * 60 * 1000
 const MAX_CONNECTION_ATTEMPTS = 5
+const CONNECTION_RETRY_DELAY_MS = 1000
 
 const writeLine = (message = ''): void => {
 	process.stdout.write(`${message}\n`)
@@ -138,7 +140,8 @@ const connect = async (
 	secureAuthFiles: () => Promise<void>
 ): Promise<ConnectedSocket> => {
 	const renderedQrs = new Set<string>()
-	const logger = P({ level: 'silent' })
+	// Protocol logs stay off by default because they can contain identifiers and payload metadata.
+	const logger = P({ level: process.env.SMOKE_LOG_LEVEL?.trim() || 'silent' })
 
 	for (let attempt = 1; attempt <= MAX_CONNECTION_ATTEMPTS; attempt++) {
 		const { state, saveCreds } = await useMultiFileAuthState(authDir)
@@ -186,7 +189,11 @@ const connect = async (
 		} finally {
 			await safeEnd(sock)
 		}
-		writeLine('[PAIR] Pairing handoff received; reconnecting the smoke client.')
+		if (attempt < MAX_CONNECTION_ATTEMPTS) {
+			const retryDelayMs = CONNECTION_RETRY_DELAY_MS * attempt
+			writeLine(`[PAIR] Pairing handoff received; reconnecting the smoke client in ${retryDelayMs / 1000} second(s).`)
+			await delay(retryDelayMs, undefined, { signal })
+		}
 	}
 
 	throw new Error(`Could not establish a connection after ${MAX_CONNECTION_ATTEMPTS} attempts`)

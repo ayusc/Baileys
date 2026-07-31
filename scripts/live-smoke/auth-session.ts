@@ -107,8 +107,19 @@ const processIsRunning = (pid: number): boolean => {
 }
 
 const readLock = async (lockPath: string): Promise<LockRecord | undefined> => {
+	let raw: string
 	try {
-		const value = JSON.parse(await readFile(lockPath, 'utf8')) as Partial<LockRecord>
+		raw = await readFile(lockPath, 'utf8')
+	} catch (error) {
+		if (isNodeError(error) && error.code === 'ENOENT') {
+			return
+		}
+
+		throw error
+	}
+
+	try {
+		const value = JSON.parse(raw) as Partial<LockRecord>
 		const pid = value.pid
 		return typeof pid === 'number' &&
 			Number.isSafeInteger(pid) &&
@@ -117,11 +128,7 @@ const readLock = async (lockPath: string): Promise<LockRecord | undefined> => {
 			value.token.length > 0
 			? { pid, token: value.token }
 			: undefined
-	} catch (error) {
-		if (isNodeError(error) && error.code === 'ENOENT') {
-			return
-		}
-
+	} catch {
 		return
 	}
 }

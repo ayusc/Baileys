@@ -1,34 +1,19 @@
 import type { proto, WAMessage, WAMessageKey, WAMessageUpdate } from '../../src'
 import { isJidBroadcast, isJidNewsletter } from '../../src'
+import { normalizeMessageContent } from '../../src/Utils/messages'
 
 export interface MessageUpsert {
 	messages: WAMessage[]
 	type: 'append' | 'notify'
 }
 
-const innerMessage = (message: proto.IMessage): proto.IMessage | undefined =>
-	message.ephemeralMessage?.message ||
-	message.viewOnceMessage?.message ||
-	message.documentWithCaptionMessage?.message ||
-	message.viewOnceMessageV2?.message ||
-	message.viewOnceMessageV2Extension?.message ||
-	undefined
-
 export const extractText = (message: proto.IMessage | null | undefined): string | undefined => {
-	let content = message
-	for (let depth = 0; content && depth < 5; depth++) {
-		if (typeof content.conversation === 'string') {
-			return content.conversation
-		}
-
-		if (typeof content.extendedTextMessage?.text === 'string') {
-			return content.extendedTextMessage.text
-		}
-
-		content = innerMessage(content)
+	const content = normalizeMessageContent(message)
+	if (typeof content?.conversation === 'string') {
+		return content.conversation
 	}
 
-	return undefined
+	return typeof content?.extendedTextMessage?.text === 'string' ? content.extendedTextMessage.text : undefined
 }
 
 const isSupportedIncomingMessage = (message: WAMessage): boolean => {
