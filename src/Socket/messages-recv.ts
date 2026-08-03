@@ -1887,6 +1887,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		// error in acknowledgement,
 		// device could not display the message
 		if (attrs.error) {
+			// SERVER_ERROR_CODES.MessageAccountRestriction ('463') and
+			// NACK_REASONS.SenderReachoutTimelocked (463) are the same wire value.
+			// isReachoutTimelocked is still read below for messageStubParameters —
+			// the branch below that used to gate on it separately was unreachable
+			// (MessageAccountRestriction always matched first), so its restriction-status
+			// fetch is folded into that branch instead of being dead code.
 			const isReachoutTimelocked = attrs.error === String(NACK_REASONS.SenderReachoutTimelocked)
 
 			if (attrs.error === SERVER_ERROR_CODES.MessageAccountRestriction) {
@@ -1931,15 +1937,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						}
 					})()
 				}
+
+				// also fetch current restriction details — the account may be under an
+				// active reachout timelock rather than just missing a tctoken
+				await fetchAccountReachoutTimelock().catch(err => logger.warn({ err }, 'failed to fetch reachout timelock'))
 			} else if (attrs.error === SERVER_ERROR_CODES.SmaxInvalid) {
 				logger.warn(
 					{ msgId: attrs.id, from: attrs.from },
 					'smax-invalid (479): stanza rejected by server — likely stale device session or malformed addressing'
 				)
-			} else if (isReachoutTimelocked) {
-				// user is temporarily restricted, fetch current restriction details
-				await fetchAccountReachoutTimelock().catch(err => logger.warn({ err }, 'failed to fetch reachout timelock'))
-				logger.warn({ attrs }, 'received error in ack')
 			} else {
 				logger.warn({ attrs }, 'received error in ack')
 			}

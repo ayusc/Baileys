@@ -18,6 +18,30 @@ describe('PN to LID Resolution (Issues #2683, #2698, #2688)', () => {
 		getLIDsForPNs: jest.Mock<(pns: string[]) => Promise<{ pn: string; lid: string }[] | null>>
 	}
 	let config: any
+	// Raw outgoing frames, captured synchronously inside the send() mock so there is
+	// no race with the async decode below — sendMessage()'s promise can resolve
+	// before a deferred decode runs, but never before send() itself is called.
+	let capturedRawFrames: Buffer[] = []
+
+	const decodeCapturedMessageNodes = async () => {
+		const nodes: any[] = []
+		for (const buf of capturedRawFrames) {
+			for (let offset = 0; offset < 20 && offset < buf.length; offset++) {
+				try {
+					const decoded = await decodeBinaryNode(buf.slice(offset))
+					if (decoded.tag === 'message') {
+						nodes.push(decoded)
+					}
+
+					break
+				} catch {
+					// try next offset
+				}
+			}
+		}
+
+		return nodes
+	}
 
 	beforeAll(() => {
 		// Mock connect to be a no-op to prevent real network connections
@@ -32,6 +56,7 @@ describe('PN to LID Resolution (Issues #2683, #2698, #2688)', () => {
 
 		// Mock send to immediately call the callback and auto-reply to pending queries
 		WebSocketClient.prototype.send = jest.fn().mockImplementation(function (this: any, data: any, cb: any) {
+			capturedRawFrames.push(Buffer.from(data))
 			cb?.(null)
 
 			// Find any active TAG listeners and automatically reply to resolve the query
@@ -93,6 +118,7 @@ describe('PN to LID Resolution (Issues #2683, #2698, #2688)', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks()
+		capturedRawFrames = []
 		mockLidMapping = {
 			getLIDForPN: jest.fn<(pn: string) => Promise<string | null>>(),
 			getPNForLID: jest.fn<(lid: string) => Promise<string | null>>(),
@@ -141,6 +167,9 @@ describe('PN to LID Resolution (Issues #2683, #2698, #2688)', () => {
 		await sock.sendMessage('12345@s.whatsapp.net', { text: 'test' })
 
 		expect(mockLidMapping.getLIDForPN).toHaveBeenCalledWith('12345@s.whatsapp.net')
+		const messageNodes = await decodeCapturedMessageNodes()
+		expect(messageNodes).toHaveLength(1)
+		expect(messageNodes[0].attrs.to).toBe('12345@s.whatsapp.net')
 	})
 
 	it('should resolve destination JID to mapped LID when mapping exists', async () => {
@@ -151,6 +180,9 @@ describe('PN to LID Resolution (Issues #2683, #2698, #2688)', () => {
 		await sock.sendMessage('12345@s.whatsapp.net', { text: 'test' })
 
 		expect(mockLidMapping.getLIDForPN).toHaveBeenCalledWith('12345@s.whatsapp.net')
+		const messageNodes = await decodeCapturedMessageNodes()
+		expect(messageNodes).toHaveLength(1)
+		expect(messageNodes[0].attrs.to).toBe('98765@lid')
 	})
 
 	it('should keep destination JID unchanged when sending directly to LID', async () => {
