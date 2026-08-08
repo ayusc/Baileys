@@ -389,7 +389,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 						JSON.stringify({
 							variables: {
 								input: {
-									text: status.slice(0, 50),
+									text: Array.from(status).slice(0, 50).join(''),
 									emoji: { content: emoji },
 									ephemeral_duration_sec: duration
 								}
