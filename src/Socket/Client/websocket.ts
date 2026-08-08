@@ -52,9 +52,12 @@ export class WebSocketClient extends AbstractSocketClient {
 	}
 
 	async close() {
-		if (!this.socket) {
+		if (!this.socket || this.isClosed) {
+			this.socket = null
 			return
 		}
+
+		const socket = this.socket
 
 		/**
 		 * CONNECTION STABILITY: Remove all forwarding listeners from the
@@ -63,22 +66,35 @@ export class WebSocketClient extends AbstractSocketClient {
 		 * socket back to this client instance.
 		 */
 		for (const [event, handler] of this.socketListeners) {
-			this.socket.removeListener(event, handler)
+			socket.removeListener(event, handler)
 		}
 
 		this.socketListeners.clear()
 
+		const noop = () => {}
+		socket.on('error', noop)
+
 		const closePromise = new Promise<void>(resolve => {
-			this.socket?.once('close', resolve)
+			if (socket.readyState === WebSocket.CLOSED) {
+				resolve()
+			} else {
+				socket.once('close', () => resolve())
+			}
 		})
 
-		this.socket.close()
+		socket.close()
 
 		await closePromise
 
+		socket.removeListener('error', noop)
 		this.socket = null
 	}
+
 	send(str: string | Uint8Array, cb?: (err?: Error) => void): boolean {
+		if (!this.isOpen) {
+			return false
+		}
+
 		this.socket?.send(str, cb)
 
 		return Boolean(this.socket)
