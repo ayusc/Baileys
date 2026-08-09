@@ -7,7 +7,7 @@ type ProcessMessageContext = {
     creds: AuthenticationCreds;
     keyStore: SignalKeyStoreWithTransaction;
     ev: BaileysEventEmitter;
-    logger?: ILogger;
+    logger: ILogger;
     options: RequestInit;
     signalRepository: SignalRepositoryWithLIDStore;
     getMessage: SocketConfig['getMessage'];
