@@ -38,7 +38,9 @@ export declare const bindWaitForConnectionUpdate: (ev: BaileysEventEmitter) => (
  * utility that fetches latest baileys version from the master branch.
  * Use to ensure your WA connection is always on the latest version
  */
-export declare const fetchLatestBaileysVersion: (options?: RequestInit) => Promise<{
+export declare const fetchLatestBaileysVersion: (options?: RequestInit & {
+    timeout?: number;
+}) => Promise<{
     version: WAVersion;
     isLatest: boolean;
     error?: undefined;
@@ -51,7 +53,9 @@ export declare const fetchLatestBaileysVersion: (options?: RequestInit) => Promi
  * A utility that fetches the latest web version of whatsapp.
  * Use to ensure your WA connection is always on the latest version
  */
-export declare const fetchLatestWaWebVersion: (options?: RequestInit) => Promise<{
+export declare const fetchLatestWaWebVersion: (options?: RequestInit & {
+    timeout?: number;
+}) => Promise<{
     version: WAVersion;
     isLatest: boolean;
     error?: undefined;
