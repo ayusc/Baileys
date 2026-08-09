@@ -39,6 +39,12 @@ export type IdentityChangeContext = {
      * Must not throw; implementations are responsible for their own error handling.
      */
     onBeforeSessionRefresh?: (jid: string) => void;
+    /**
+     * Invoked immediately when a participant's identity change is processed,
+     * regardless of whether the session refresh is skipped or offline.
+     * Used to invalidate caches (e.g., sender-key-memory).
+     */
+    onParticipantIdentityChange?: (jid: string, me: boolean) => void | Promise<void>;
 };
 export declare function handleIdentityChange(node: BinaryNode, ctx: IdentityChangeContext): Promise<IdentityChangeResult>;
 //# sourceMappingURL=identity-change-handler.d.ts.map
