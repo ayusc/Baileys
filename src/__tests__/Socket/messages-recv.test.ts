@@ -28,7 +28,17 @@ jest.unstable_mockModule('../../Socket/messages-send', () => ({
 	}))
 }))
 
-const { makeMessagesRecvSocket } = await import('../../Socket/messages-recv')
+const { makeMessagesRecvSocket, extractLinkCodeCompanionRegBuffers } = await import('../../Socket/messages-recv')
+
+const linkCodeCompanionRegNode = (content?: BinaryNode[]): BinaryNode => ({
+	tag: 'notification',
+	attrs: {
+		from: '@s.whatsapp.net',
+		type: 'link_code_companion_reg',
+		id: '3728034975'
+	},
+	content
+})
 
 describe('sendMessageAck', () => {
 	it('acknowledges notifications before credentials identify the device', async () => {
@@ -71,7 +81,6 @@ describe('incoming message tctoken capture (Baileys#2698/#2707)', () => {
 			auth: authState as unknown as AuthenticationState
 		})
 
-		// Grab the handler messages-recv registered for incoming <message> stanzas
 		const onCalls = (sock.ws.on as jest.Mock).mock.calls as [string, (node: BinaryNode) => Promise<void>][]
 		const messageHandler = onCalls.find(([tag]) => tag === 'CB:message')?.[1]
 		expect(messageHandler).toBeDefined()
@@ -89,7 +98,6 @@ describe('incoming message tctoken capture (Baileys#2698/#2707)', () => {
 		}
 
 		await messageHandler!(node)
-		// Token capture is fire-and-forget (doesn't gate message processing) — flush microtasks
 		await new Promise(resolve => setTimeout(resolve, 0))
 
 		expect(authState.keys.set).toHaveBeenCalledWith({
@@ -99,6 +107,56 @@ describe('incoming message tctoken capture (Baileys#2698/#2707)', () => {
 					timestamp: '1700000000'
 				}
 			}
+		})
+	})
+})
+
+describe('extractLinkCodeCompanionRegBuffers', () => {
+	it('returns undefined for notification without pairing data', () => {
+		expect(extractLinkCodeCompanionRegBuffers(linkCodeCompanionRegNode())).toBeUndefined()
+	})
+
+	it('returns undefined when a required pairing field is missing', () => {
+		const node = linkCodeCompanionRegNode([
+			{
+				tag: 'link_code_companion_reg',
+				attrs: {},
+				content: [
+					{ tag: 'link_code_pairing_ref', attrs: {}, content: Buffer.from('ref') },
+					{ tag: 'primary_identity_pub', attrs: {}, content: Buffer.from('identity') }
+				]
+			}
+		])
+
+		expect(extractLinkCodeCompanionRegBuffers(node)).toBeUndefined()
+	})
+
+	it('extracts required pairing buffers', () => {
+		const ref = Buffer.from('ref')
+		const primaryIdentityPublicKey = Buffer.from('identity')
+		const primaryEphemeralPublicKeyWrapped = new Uint8Array([1, 2, 3])
+		const node = linkCodeCompanionRegNode([
+			{
+				tag: 'link_code_companion_reg',
+				attrs: {},
+				content: [
+					{ tag: 'link_code_pairing_ref', attrs: {}, content: ref },
+					{ tag: 'primary_identity_pub', attrs: {}, content: primaryIdentityPublicKey },
+					{
+						tag: 'link_code_pairing_wrapped_primary_ephemeral_pub',
+						attrs: {},
+						content: primaryEphemeralPublicKeyWrapped
+					}
+				]
+			}
+		])
+
+		const result = extractLinkCodeCompanionRegBuffers(node)
+
+		expect(result).toEqual({
+			ref,
+			primaryIdentityPublicKey,
+			primaryEphemeralPublicKeyWrapped: Buffer.from(primaryEphemeralPublicKeyWrapped)
 		})
 	})
 })
