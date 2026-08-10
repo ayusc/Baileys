@@ -4,6 +4,11 @@ import Long from 'long';
 import { proto } from '../../WAProto/index.js';
 import type { MessageReceiptType, MessageRelayOptions, NewChatMessageCapInfo, SocketConfig, WAMessage, WAMessageKey } from '../Types/index.js';
 import { type BinaryNode, type JidWithDevice } from '../WABinary/index.js';
+export declare const extractLinkCodeCompanionRegBuffers: (node: BinaryNode) => {
+    ref: Buffer<any>;
+    primaryIdentityPublicKey: Buffer<any>;
+    primaryEphemeralPublicKeyWrapped: Buffer<any>;
+} | undefined;
 export declare const makeMessagesRecvSocket: (config: SocketConfig) => {
     sendMessageAck: (node: BinaryNode, errorCode?: number) => Promise<void>;
     sendRetryRequest: (node: BinaryNode, forceIncludeKeys?: boolean) => Promise<void>;
