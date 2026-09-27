@@ -373,12 +373,15 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	}
 
 	/** update the profile status for yourself */
-	const updateProfileStatus = async (status: string, emoji: string, duration: number) => {
-		await query({
+  const updateProfileStatus = async (status: string, emoji?: string, duration: number = 0) => {
+		const text = status.trim().length > 0 ? Array.from(status).slice(0, 50).join('') : null
+		const emojiPayload = emoji ? { content: emoji } : undefined
+	
+		return await query({
 			tag: 'iq',
 			attrs: {
 				to: S_WHATSAPP_NET,
-				type: 'get',
+				type: 'set',
 				xmlns: 'w:mex'
 			},
 			content: [
@@ -389,8 +392,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 						JSON.stringify({
 							variables: {
 								input: {
-									text: Array.from(status).slice(0, 50).join(''),
-									emoji: { content: emoji },
+									text,
+									...(emojiPayload && { emoji: emojiPayload }),
 									ephemeral_duration_sec: duration
 								}
 							}
@@ -400,7 +403,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				}
 			]
 		})
-	}
+  }
 	
 	const updateProfileName = async (name: string) => {
 		await chatModify({ pushNameSetting: name }, '')
