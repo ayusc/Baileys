@@ -182,7 +182,7 @@ declare const makeWASocket: (config: UserFacingSocketConfig) => {
         height: number;
     }) => Promise<void>;
     removeProfilePicture: (jid: string) => Promise<void>;
-    updateProfileStatus: (status: string, emoji: string, duration: number) => Promise<void>;
+    updateProfileStatus: (status: string, emoji?: string, duration?: number) => Promise<any>;
     updateProfileName: (name: string) => Promise<void>;
     updateBlockStatus: (jid: string, action: "block" | "unblock") => Promise<void>;
     updateDisableLinkPreviewsPrivacy: (isPreviewsDisabled: boolean) => Promise<void>;
